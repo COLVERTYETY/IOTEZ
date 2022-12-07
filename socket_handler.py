@@ -34,21 +34,30 @@ class SocketActor:
         self.Q_size = Queue_Size
         self.data  = Queue(maxsize=self.Q_size)
         self.connection_records = threadSafeDict()
+        self.runnable = True
     
     def run(self):
         # multithraded server
-        while True:
-            client, address = self.socket.accept()
-            #  start the thread
-            threading.Thread(target = self.listenToClient,args = (client,address)).start()
+        while self.runnable:
+            try:
+                self.socket.settimeout(THREAD_TIMEOUT)
+                client, address = self.socket.accept()
+                #  start the thread
+                threading.Thread(target = self.listenToClient,args = (client,address)).start()
+            except Exception as e:
+                # print("Socket Handler Error", e)
+                pass
+                #  reset the timeout
+                # self.socket.settimeout(None)
+                
 
     def listenToClient(self, client, address):
-        client.settimeout(3)
+        client.settimeout(THREAD_TIMEOUT)
         cumul = ""
         print(f"Listening to {address}")
         self.connection_records[address] = "connected"
         #  while client has not timed out
-        while True:
+        while self.runnable:
             try:
                 #  with a time out of 2 seconds
                 data = client.recv(self.buffer_size)
@@ -78,6 +87,7 @@ class SocketActor:
             buffer+=f"{key}: {value}\n"
         buffer+="\n"
         return buffer
+    
 
     def decode(self, data:str, cumul:str, ip=None):
         # parse the data
@@ -102,4 +112,13 @@ class SocketActor:
         # else:
         #     print("data incomplete")
         return cumul
+    
+    def stop(self):
+        self.runnable = False
+        self.socket.close()
+        print("STOPED socket handler")
+        #  stop the thread
+        
+
+
     

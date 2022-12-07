@@ -19,8 +19,6 @@ request_Q = Queue(maxsize=1000)
 socket_actor = SocketActor()
 data_actor = DataActor(socket_actor.data, request_Q)
 
-
-
 @app.get("/sockets")
 def get_connections():
     print(socket_actor)
@@ -94,6 +92,16 @@ def save():
 
 if __name__ == "__main__":
     print("STARTING SERVER")
-    threading.Thread(target=data_actor.run).start()
-    threading.Thread(target = socket_actor.run).start()
+    t1 = threading.Thread(target=data_actor.run)
+    t2 = threading.Thread(target = socket_actor.run)
+    t1.start()
+    t2.start()
     uvicorn.run(app, host=IP, port=PORT_HTTP)
+    print("SENDING STOP")
+    socket_actor.stop()
+    data_actor.stop()
+    print("CLOSING THREADS")
+    while t1.is_alive() or t2.is_alive():
+        print(t1.is_alive(), t2.is_alive())
+        time.sleep(1)
+    print("DONE")

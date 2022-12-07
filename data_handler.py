@@ -18,14 +18,18 @@ class DataActor():
         self.data["key"] = []
         self.data["value"] = []
         self.data["time"] = []
-        if AUTO_LOAD:
-            self.load_last()
+        self.runnable = True
         self.current_path = None
         self.server_start = time.strftime("%Y%m%d-%H%M%S")
+        if AUTO_LOAD:
+            self.load_last()
+        else:
+            print("NO AUTO LOAD")
+
 
     def run(self)->None:
         last_save  = time.time()
-        while True:
+        while self.runnable:
             if not self.socket_Q.empty():
                 group, key,value, time_stamp, ip = self.socket_Q.get()
                 with self.lock:
@@ -36,9 +40,10 @@ class DataActor():
                 with self.lock:
                     # self.data.concat({"group":group, "ip":ip, "key":key, "value":value, "time":time_stamp}, ignore_index=True)
                     self.data = self.data.append({"group":group, "ip":ip, "key":key, "value":value, "time":time_stamp}, ignore_index=True)
-            if AUTO_SAVE and time.time() - last_save > AUTO_SAVE_INTERVAL:
+            if AUTO_SAVE and (time.time() - last_save) > AUTO_SAVE_INTERVAL:
                 self.save()
                 last_save = time.time()
+                print("SAVED DATA")
 
     def get(self, group:str, key:str)->pd.DataFrame:
         with self.lock:
@@ -94,10 +99,6 @@ class DataActor():
             # self.data.to_json(name, orient="records")
         return name
 
-    def __del__(self) -> None:
-        self.save()
-        print("SAVED DATA before deletion")
-
     def clear(self)->None:
         with self.lock:
             self.data = pd.DataFrame()
@@ -112,9 +113,24 @@ class DataActor():
         files = [f for f in files if f.endswith(".csv")]
         files.sort()
         if len(files) > 0:
-            self.load(os.path.join(DATA_PATH, files[-1]))
-            print("LOADED LAST DATA", files[-1])
-            return True
+            try:
+                # check if last file is older than autlo load age
+                last_time = files[-1].split("_to_")[1]
+                last_time = time.strptime(last_time, "%Y%m%d-%H%M%S.csv")
+                last_time = time.mktime(last_time)
+                if (time.time() - last_time) < AUTO_LOAD_AGE:
+                    self.load(os.path.join(DATA_PATH, files[-1]))
+                    self.current_path = os.path.join(DATA_PATH, files[-1])
+                    self.server_start = files[-1].split("_to_")[0] 
+                    print("SERVER RECORDING START TIME", self.server_start)
+                    print("LOADED LAST DATA", files[-1])
+                    return True
+                else:
+                    print("LAST DATA FILE TOO OLD")
+                    return False
+            except Exception as e:
+                print("ERROR LOADING LAST DATA", e)
+                return False
         else:
             print("NO DATA FOUND")
             return False
@@ -130,5 +146,10 @@ class DataActor():
     
     def __repr__(self) -> str:
         return self.__str__()
+    
+    def stop(self)->None:
+        self.runnable = False
+        self.save()
+        print("STOPPED data handler")
         
     

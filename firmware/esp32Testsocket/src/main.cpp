@@ -3,9 +3,6 @@
 #include <WiFiClient.h>
 #include "secrets.h"
 
-// wifi
-WiFiClient client;
-
 #ifndef ssid
   #define ssid "youWIFI"
 #endif
@@ -18,6 +15,11 @@ WiFiClient client;
 #ifndef serverPort
   #define serverPort 8000
 #endif
+
+// wifi
+WiFiClient client;
+
+
 
 bool ledState = false;
 char msgbuffer[20];
