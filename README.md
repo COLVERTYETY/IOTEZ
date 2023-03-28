@@ -10,7 +10,7 @@ Having One unified stack for the datalogging and the web interface makes it poss
 
 The project is still in its early stages and is not ready for production use. The goal is not to develop a production hardened solution, but rather to provide a simple and EZ to use solution for small projects.
 
-![screenshot](Screenshot%20from%202023-03-28%2014-30-27.png)
+![screenshot](screen.png)
 
 ## Usage
 
