@@ -1,37 +1,46 @@
 import streamlit as st
+import requests
 import pandas as pd
-import numpy as np
-import time
+import json
+from settings import *
 
-@st.cache
-class myview():
-    def __init__(self, title):
-        self.title = title
-        self.data = pd.DataFrame()
-        self.data["x"] = []
-        self.data["y"] = []
-        #  fill with some data
-        for i in range(100):
-            self.data = self.data.append({"x":i, "y":np.random.randint(0,100)}, ignore_index=True)
+API_BASE_URL = "http://"+SERVER_IP + ":"+str(PORT_HTTP)   # Update this to the correct API endpoint
 
-pages = [myview("df1"),myview("df2")]
+def fetch_data(endpoint):
+    response = requests.get(f"{API_BASE_URL}{endpoint}")
+    return json.loads(response.text)
 
-#  setup navigation
-st.sidebar.title("Navigation")
-#  subsection for pages
-con = st.sidebar.container()
-con.subheader("Pages")
-# unfolding pages
-page = con.selectbox("view:", [p.title for p in pages])
+st.title("FastAPI Data Browser")
 
-st.sidebar.subheader("configutation")
+st.sidebar.title("Menu")
+menu_option = st.sidebar.selectbox("Choose an option", ["Browse Data", "Connections", "Requests"])
 
-config = st.sidebar.radio("config:", ["config1","config2"])
-
-#  setup raw data
-for p in pages:
-    if p.title == page:
-        st.subheader("raw data")
-        st.dataframe(p.data)
-        st.line_chart(p.data)
-
+if menu_option == "Browse Data":
+    st.header("Browse Data")
+    temp = fetch_data("/groups")
+    #  remove { and } from the string
+    t = temp[1:-1].split(",")
+    group = st.selectbox("Select Group", t)
+    if group:
+        tk = fetch_data(f"/keys/{group}")
+        #  remove { and } from the string
+        tkk = tk[1:-1].split(",")
+        key = st.selectbox("Select Key", tkk)
+        if key:
+            n = st.number_input("Number of data points", min_value=1, max_value=100, value=10)
+            data = fetch_data(f"/{group}/{key}/{n}")
+            # data  = json.loads(data)
+            data = pd.read_json(data, orient="records")
+            # only keep "ip" "value" and "time" columns
+            data = data[["ip", "value", "time"]]
+            data["time"] = pd.to_datetime(data["time"], unit="s")
+            #  display line chart, grouped by ip
+            st.line_chart(data["value"])
+elif menu_option == "Connections":
+    st.header("Connections")
+    connections = fetch_data("/sockets")
+    st.write(connections)
+elif menu_option == "Requests":
+    st.header("Requests")
+    ips = fetch_data("/requests")
+    st.write(ips)

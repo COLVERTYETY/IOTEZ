@@ -83,6 +83,7 @@ class DataActor():
             # self.data = pd.read_json(path, orient="records")
             # load from csv
             self.data = pd.read_csv(path)
+            # print(self.data)
     
     def save(self)->None:
         # determine name from time
@@ -120,6 +121,7 @@ class DataActor():
                 last_time = time.mktime(last_time)
                 if (time.time() - last_time) < AUTO_LOAD_AGE:
                     self.load(os.path.join(DATA_PATH, files[-1]))
+                    print(self.data.head())
                     self.current_path = os.path.join(DATA_PATH, files[-1])
                     self.server_start = files[-1].split("_to_")[0] 
                     print("SERVER RECORDING START TIME", self.server_start)
